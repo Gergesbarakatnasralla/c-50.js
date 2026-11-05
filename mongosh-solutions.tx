@@ -1,0 +1,81 @@
+// Q1: explicit collection with validation
+db.createCollection("books", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["title"],
+      properties: {
+        title: { bsonType: "string", minLength: 1 }
+      }
+    }
+  }
+})
+// Q2: implicit collection
+db.authors.insertOne({ name: "Author1", nationality: "British" })
+q3
+// Q3: capped collection (1MB)
+db.createCollection("logs", { capped: true, size: 1048576 })
+// Q4: index on books.title
+db.books.createIndex({ title: 1 })
+// Q5: insert one book
+db.books.insertOne({ title: "Book1", author: "Ali", year: 1937, genres: ["Fantasy", "Adventure"] })
+// Q6: insert many books
+db.books.insertMany([
+  { title: "Future", author: "George Orwell", year: 2020, genres: ["Science Fiction"] },
+  { title: "To Kill a Mockingbird", author: "Harper Lee", year: 1960, genres: ["Classic", "Fiction"] },
+  { title: "Brave New World", author: "Aldous Huxley", year: 2006, genres: ["Dystopian", "Science Fiction"] }
+])
+
+// Q8: update year of "Future"
+db.books.updateOne({ title: "Future" }, { $set: { year: 2022 } })
+
+// Q9: find book by title
+db.books.findOne({ title: "Brave New World" })
+// Q10: books between 1990 and 2010
+db.books.find({ year: { $gte: 1990, $lte: 2010 } })
+// Q11: books where genres includes "Science Fiction"
+db.books.find({ genres: "Science Fiction" })
+// Q12: skip first 2, limit 3, sort by year desc
+db.books.find().sort({ year: -1 }).skip(2).limit(3) 
+// Q13: books where year is stored as integer
+db.books.find({ year: { $type: "int" } })
+// Q14: books without Horror or Science Fiction genres
+db.books.find({ genres: { $nin: ["Horror", "Science Fiction"] } })
+// Q15: delete books published before 2000
+db.books.deleteMany({ year: { $lt: 2000 } })
+// Q16: aggregate - books after 2000 sorted by year desc
+db.books.aggregate([
+  { $match: { year: { $gt: 2000 } } },
+  { $sort: { year: -1 } }
+])
+// Q17: aggregate - books after 2000, show only title, author, year
+db.books.aggregate([
+  { $match: { year: { $gt: 2000 } } },
+  { $project: { title: 1, author: 1, year: 1, _id: 0 } }
+])
+// Q19: aggregate - join logs with books
+db.logs.aggregate([
+  { $addFields: { book_id: { $toObjectId: "$book_id" } } },
+  {
+    $lookup: {
+      from: "books",
+      localField: "book_id",
+      foreignField: "_id",
+      as: "book_details"
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      action: 1,
+      "book_details.title": 1,
+      "book_details.author": 1,
+      "book_details.year": 1
+    }
+  }
+])
+// Q18: aggregate - unwind genres
+db.books.aggregate([
+  { $unwind: "$genres" },
+  { $project: { title: 1, genres: 1, _id: 0 } }
+])
